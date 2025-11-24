@@ -10,7 +10,9 @@ import TripsScreen from '../screens/TripsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import GalleryScreen from '../screens/GalleryScreen';
 import TripGalleryScreen from '../screens/TripGalleryScreen';
-import ChatScreen from '../screens/ChatScreen'; // Import Chat
+import ChatScreen from '../screens/ChatScreen';
+import AddExpenseScreen from '../screens/AddExpenseScreen'; // Import here
+import AddDocumentScreen from '../screens/AddDocumentScreen';
 import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -70,7 +72,6 @@ function TabNavigator() {
           tabBarIcon: ({ color, size }) => <ImageIcon color={color} size={size} />
         }}
       />
-      {/* Update Chat Tab */}
       <Tab.Screen 
         name="Chat" 
         component={ChatScreen} 
@@ -100,6 +101,16 @@ export default function RootNavigator() {
         name="TripGallery" 
         component={TripGalleryScreen}
         options={{ animation: 'slide_from_right' }} 
+      />
+      <Stack.Screen 
+        name="AddExpense" 
+        component={AddExpenseScreen}
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }} 
+      />
+      <Stack.Screen 
+        name="AddDocument" 
+        component={AddDocumentScreen}
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }} 
       />
     </Stack.Navigator>
   );

@@ -6,7 +6,7 @@ const expoDb = openDatabaseSync('roam.db');
 export const db = drizzle(expoDb, { schema });
 
 export const initDb = () => {
-  // Create Trips Table
+  // Trips
   expoDb.execSync(`
     CREATE TABLE IF NOT EXISTS trips (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +21,7 @@ export const initDb = () => {
     );
   `);
 
-  // NEW: Create Photos Table
+  // Photos
   expoDb.execSync(`
     CREATE TABLE IF NOT EXISTS photos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,5 +32,31 @@ export const initDb = () => {
       FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
     );
   `);
-  console.log("Database initialized: trips & photos tables ready.");
+
+  // Expenses
+  expoDb.execSync(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      trip_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      created_at INTEGER,
+      FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+    );
+  `);
+
+  // NEW: Documents
+  expoDb.execSync(`
+    CREATE TABLE IF NOT EXISTS documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      trip_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      subtitle TEXT,
+      link TEXT,
+      FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE
+    );
+  `);
+  console.log("Database initialized: all tables ready.");
 };
