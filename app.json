@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nickperry.roam"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,6 +26,16 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Roam needs access to your photos to add trip cover images and memories.",
+          "cameraPermission": "Roam needs access to your camera to take photos for your trips."
+        }
+      ]
+    ]
   }
 }

@@ -1,120 +1,83 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // 1. Import this
-import { db } from '../db/client';
-import { trips, Trip } from '../db/schema';
-import { desc } from 'drizzle-orm';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import TripCard from '../components/TripCard';
+import { supabase } from '../lib/supabase';
+import { Trip } from '../db/schema';
 
-// 2. Define the Navigation Types
-type RootStackParamList = {
-  Dashboard: undefined;
-  AddTrip: undefined;
-  TripDetails: { tripId: number };
-};
-
-type TripsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
+type RootStackParamList = { TripDetails: { tripId: string } };
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 type FilterType = 'all' | 'ideated' | 'planned' | 'confirmed';
 
+function formatDate(start?: string | null, end?: string | null) {
+  if (!start) return 'Dates TBD';
+  const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return end ? `${fmt(start)} → ${fmt(end)}` : fmt(start);
+}
+
 export default function TripsScreen() {
-  // 3. Apply the type to the hook
-  const navigation = useNavigation<TripsScreenNavigationProp>();
-  
+  const navigation = useNavigation<Nav>();
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
 
-  // Fetch all trips ordered by date
   const fetchTrips = async () => {
-    try {
-      const result = await db.select().from(trips).orderBy(desc(trips.startDate));
-      setAllTrips(result);
-    } catch (e) {
-      console.error(e);
-    }
+    const { data } = await supabase.from('trips').select('*').order('start_date', { ascending: true });
+    if (data) setAllTrips(data as Trip[]);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchTrips();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { fetchTrips(); }, []));
 
-  // Filter logic
-  const filteredTrips = allTrips.filter(t => {
-    if (filter === 'all') return true;
-    return t.status === filter;
-  });
+  const filtered = allTrips.filter(t => filter === 'all' || t.status === filter);
 
-  const handleTripPress = (id: number) => {
-    // 4. Clean navigation call (No 'as never' hacks needed)
-    navigation.navigate('TripDetails', { tripId: id });
-  };
-
-  const formatDate = (start?: string | null, end?: string | null) => {
-    if (!start) return "Dates TBD";
-    return `${start} - ${end || '...'}`;
-  };
-
-  const renderFilterTab = (key: FilterType, label: string) => {
-    const isActive = filter === key;
-    // Determine active color based on the specific filter type for extra flair
-    let activeColor = colors.brand.primary;
-    if (key === 'ideated') activeColor = colors.status.ideated.text;
-    if (key === 'planned') activeColor = colors.status.planned.text;
-    if (key === 'confirmed') activeColor = colors.status.confirmed.text;
-
-    return (
-      <TouchableOpacity 
-        onPress={() => setFilter(key)}
-        style={[
-          styles.tab, 
-          isActive && { backgroundColor: activeColor, borderColor: activeColor }
-        ]}
-      >
-        <Text style={[styles.tabText, isActive && styles.activeTabText]}>
-          {label}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+  const FILTERS: { key: FilterType; label: string; color: string }[] = [
+    { key: 'all', label: 'All', color: colors.brand.primary },
+    { key: 'ideated', label: 'Dreaming', color: colors.status.ideated.text },
+    { key: 'planned', label: 'Planning', color: colors.status.planned.text },
+    { key: 'confirmed', label: 'Confirmed', color: colors.status.confirmed.text },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>My Adventures</Text>
-        <Text style={styles.subtitle}>{allTrips.length} Total Trips</Text>
+        <Text style={styles.subtitle}>{allTrips.length} trip{allTrips.length !== 1 ? 's' : ''}</Text>
       </View>
 
-      {/* Filter Tabs */}
-      <View style={styles.tabsContainer}>
-        <View style={styles.tabsScroll}>
-          {renderFilterTab('all', 'All')}
-          {renderFilterTab('ideated', 'Ideated')}
-          {renderFilterTab('planned', 'Planned')}
-          {renderFilterTab('confirmed', 'Confirmed')}
-        </View>
+      <View style={styles.tabsRow}>
+        {FILTERS.map(({ key, label, color }) => {
+          const active = filter === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setFilter(key)}
+              style={[styles.tab, active && { backgroundColor: color, borderColor: color }]}
+            >
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {/* List */}
       <FlatList
-        data={filteredTrips}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.listContent}
+        data={filtered}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No trips found in this category.</Text>
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>No trips in this category.</Text>
           </View>
         }
         renderItem={({ item }) => (
           <TripCard
             title={item.title}
-            dates={formatDate(item.startDate, item.endDate)}
-            status={item.status as any}
-            onPress={() => handleTripPress(item.id)}
+            destination={item.destination}
+            dates={formatDate(item.start_date, item.end_date)}
+            status={item.status}
+            coverImageUrl={item.cover_image_url}
+            onPress={() => navigation.navigate('TripDetails', { tripId: item.id })}
           />
         )}
       />
@@ -124,24 +87,14 @@ export default function TripsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.brand.background },
-  header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 10 },
+  header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: colors.text.primary },
   subtitle: { fontSize: 14, color: colors.text.secondary, marginTop: 4 },
-  
-  tabsContainer: { paddingHorizontal: 24, paddingBottom: 16 },
-  tabsScroll: { flexDirection: 'row', gap: 8 },
-  tab: { 
-    paddingVertical: 8, 
-    paddingHorizontal: 16, 
-    borderRadius: 20, 
-    borderWidth: 1, 
-    borderColor: '#E2E8F0',
-    backgroundColor: 'white' 
-  },
+  tabsRow: { flexDirection: 'row', paddingHorizontal: 24, paddingBottom: 16, gap: 8 },
+  tab: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: 'white' },
   tabText: { fontSize: 12, fontWeight: '600', color: colors.text.secondary },
-  activeTabText: { color: 'white' },
-
-  listContent: { paddingHorizontal: 24, paddingBottom: 100 },
-  emptyContainer: { alignItems: 'center', marginTop: 50 },
-  emptyText: { color: colors.text.muted, fontSize: 16 }
+  tabTextActive: { color: 'white' },
+  list: { paddingHorizontal: 24, paddingBottom: 100 },
+  empty: { alignItems: 'center', marginTop: 60 },
+  emptyText: { color: colors.text.muted, fontSize: 15 },
 });
