@@ -1,6 +1,6 @@
 # Roam
 
-A full-stack mobile travel tracker built with React Native (Expo) and Supabase.
+A full-stack mobile travel tracker built with React Native (Expo) and Supabase. Built originally for study abroad experiences.
 
 ## Features
 
